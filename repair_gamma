@@ -169,7 +169,7 @@ z=0 # neurotransmitters
 # =============================================================================
 # res = simgam(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t)
 # =============================================================================
-navgs=50
+navgs=20
 qc=[]
 for i in range(navgs):
     print(i, navgs)
