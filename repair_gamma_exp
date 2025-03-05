@@ -1,0 +1,450 @@
+import numpy as np
+from matplotlib.pyplot import plot as pt
+import matplotlib.pyplot as plt
+from numpy.random import exponential, binomial, gamma
+from collections import deque
+
+# =============================================================================
+#      no -> no + 1   with rate   K*(M-n-r), where K is: (-): k/(1+k1 z)
+#                                             (+):kb+(k-kb)( k1 z / (1+ k1 z))
+# 
+# 
+#      n -> n - b   with rate   f
+#      r -> r + b
+#      z -> z + cb
+# 
+# 
+#      r -> r - 1   with rate   kr * r
+#                   
+# 
+#      z -> z - 1     with rate   gammaz*z
+# ============================================================================= 
+
+def get_FF(x):
+    return np.var(x)/np.mean(x)
+
+def simulate(f, pr, M, n, r, z, k, kr, gammaz, cz, ftype, tmax, delta_t):
+
+        nlist=[]
+        zlist=[]
+        rlist=[]
+
+        tlist=[]
+        APlist=[]
+
+        tcurr=0
+        
+        ratio = 0
+
+# =============================================================================
+#         delta_t = 0.01 # longer than the typical autocorrelation time of the system
+#         # longer than the typical duration of the shortest reaction
+# =============================================================================
+        timer = delta_t
+        
+        while tcurr < tmax:
+
+            t0=exponential(1/f) # action potential
+            t1=exponential(1/(k*(M-n-r) + 1e-6)) # site gets occupied
+            t2=exponential(1/(gammaz*z + 1e-6)) # remove neurotransmitter
+            t3=exponential(1/(kr*r + 1e-6)) # repair a site
+            t4 = timer
+            if t0 < t1 and t0 < t2 and t0 < t3 and t0 < t4: # AP occurrs
+                b = binomial(n, pr)
+                n = n - b
+                r = r + b
+                z = z + cz*b
+                APlist.append(tcurr+t0)
+                tmin = t0
+                timer-=tmin
+
+            elif t1<t0 and t1<t2 and t1<t3 and t1 < t4: # add a docked vesicle
+                if n < M:
+                    n=n+1
+                tmin = t1
+                timer-=tmin
+            elif t2<t0 and t2<t1 and t2<t3 and t2 < t4: # remove a neurotransmitter
+                if z > 0:
+                    z=z-1
+                tmin = t2
+                timer-=tmin
+            elif t3<t0 and t3<t1 and t3<t2 and t3<t4: # remove a repair vesicle
+                if r>0:
+                    r=r-1
+                tmin = t3
+                timer -= tmin
+            else:
+                timer = delta_t
+                tmin=timer
+                if tcurr >= ratio*tmax:
+                    nlist.append(n)
+                    rlist.append(r)
+                    zlist.append(z)
+                    tlist.append(tcurr)
+            
+            tcurr += tmin
+        #      0         1      2    3       4            5               6            7 8
+        return tlist, nlist, rlist, zlist, APlist, np.mean(nlist), np.mean(zlist),\
+            np.var(nlist)/np.mean(nlist), np.var(zlist)/np.mean(zlist)
+
+# =============================================================================
+# def simulate(f, pr, M, n, r, z, k, kr, gammaz, cz, ftype, tmax, delta_t):
+# 
+#         nlist=[n]
+#         zlist=[z]
+#         rlist=[r]
+# 
+#         tlist=[0]
+#         APlist=[]
+# 
+#         tcurr=0
+# 
+#         timer = delta_t
+#         kr_timer = 1/kr
+#         
+#         ratio = 0.3
+#         
+#         while tcurr < tmax:
+# 
+#             t0=exponential(1/f) # action potential
+#             t1=exponential(1/(k*(M-n-r) + 1e-6)) # site gets occupied
+#             t2=exponential(1/(gammaz*z + 1e-6)) # remove neurotransmitter
+#             t3 = kr_timer
+#             t4 = timer
+# 
+#             if t0<t1 and t0<t2 and t0<t3 and t0<t4: # AP occurrs
+#                 b = binomial(n, pr)
+#                 n = n - b
+#                 r = r + b
+#                 z = z + cz*b
+#                 if tcurr>=ratio*tmax:
+#                     APlist.append(tcurr+t0)
+#                 tmin = t0
+#                 timer-=tmin
+#                 kr_timer-=tmin
+# 
+#             elif t1<t0 and t1<t2 and t1<t3 and t1<t4: # add a docked vesicle
+#                 if n < M:
+#                     n=n+1
+#                 tmin = t1
+#                 timer-=tmin
+#                 kr_timer-=tmin
+# 
+#             elif t2<t0 and t2<t1 and t2<t3 and t2<t4: # remove a neurotransmitter
+#                 if z > 0:
+#                     z=z-1
+#                 tmin = t2
+#                 timer-=tmin
+#                 kr_timer-=tmin
+#                 
+#             elif t3<t0 and t3<t1 and t3<t2 and t3<t4: # remove a repair vesicle
+#                 if r>0:
+#                     r=r-1
+#                 tmin = t3
+#                 timer -= tmin
+#                 kr_timer=1/kr
+# 
+#             else:
+#                 tmin=timer
+#                 kr_timer-=tmin
+#                 timer = delta_t
+#                 if tcurr>=ratio*tmax:
+#                     nlist.append(n)
+#                     rlist.append(r)
+#                     zlist.append(z)
+#                     tlist.append(tcurr)
+# 
+#             tcurr += tmin
+# 
+#         return tlist, nlist, rlist, zlist, APlist
+# =============================================================================
+    
+def simulate_kr_inf(f, pr, M, n, r, z, k, gammaz, cz, ftype, tmax, delta_t):
+        nlist=[n]
+        rlist=[r]
+        zlist=[z]
+        tlist=[0]        
+        APlist=[]
+
+        tcurr=0
+# =============================================================================
+#         delta_t = 0.1 # longer than the typical autocorrelation time of the system
+#         # longer than the typical duration of the shortest reaction
+# =============================================================================
+        timer = delta_t
+        ratio=0.3
+
+        while tcurr < tmax:
+            
+            # Get the three event times
+            t0=exponential(1/f) # action potential
+            t1=exponential(1/(k*(M-n) + 1e-6)) # empty to occupied
+            t2=exponential(1/(gammaz*z + 1e-6)) # remove 1 neurotransmitter
+            t3 = timer
+
+            # Choose the smallest one and then make that event happen
+            if t0 < t1 and t0 < t2 and t0 < t3: # AP occurrs
+                b = binomial(n, pr)
+                n = n - b
+                z = z + cz*b
+                if tcurr>=ratio*tmax:
+                    APlist.append(tcurr+t0)
+                tmin = t0
+                timer-=tmin
+                tcurr+=tmin
+
+            elif t1<t0 and t1<t2 and t1<t3: # add a docked vesicle
+                if n < M:
+                    n=n+1
+                tmin = t1
+                timer-=tmin
+                tcurr+=tmin
+
+            elif t2<t0 and t2<t1 and t2<t3: # remove a neurotransmitter
+                if z > 0:
+                    z=z-1
+                tmin = t2
+                timer-=tmin
+                tcurr+=tmin
+
+            else:
+                tmin=timer
+                timer = delta_t
+                if tcurr>=ratio*tmax:
+                    nlist.append(n)
+                    rlist.append(r)
+                    zlist.append(z)
+                    tlist.append(tcurr)
+            tcurr+=tmin
+            
+        return tlist, nlist, rlist, zlist, APlist
+    
+def simulate_deterministic(f, pr, M, n, r, z, k, kr, gammaz, cz, ftype, tmax, delta_t):
+
+        nlist=[n]
+        zlist=[z]
+        rlist=[r]
+
+        tlist=[0]
+        APlist=[]
+
+        tcurr=0
+
+        timer = delta_t
+        kr_timer = 1/kr
+
+        ratio = 0.3
+        blist = deque()
+        krtimerslist = deque()
+
+        while tcurr < tmax:
+
+# =============================================================================
+#             print(tcurr, krtimerslist)
+# =============================================================================
+
+            t0=exponential(1/f) # action potential
+            t1=exponential(1/(k*(M-n-r) + 1e-6)) # site gets occupied
+            t2=exponential(1/(gammaz*z + 1e-6)) # remove neurotransmitter
+            if len(krtimerslist)>0:
+                t3 = krtimerslist[0]-tcurr
+            else:
+                t3=np.inf
+            t4 = timer
+
+            if t0<t1 and t0<t2 and t0<t3 and t0<t4: # AP occurrs
+                b = binomial(n, pr)
+                n = n - b
+                r = r + b
+                z = z + cz*b
+                if tcurr>=ratio*tmax:
+                    APlist.append(tcurr+t0)
+                tmin = t0
+                timer-=tmin
+                if b>0:
+                    blist.append(b)
+                    krtimerslist.append(tcurr+tmin+kr_timer)
+                    
+            elif t1<t0 and t1<t2 and t1<t3 and t1<t4: # add a docked vesicle
+                if n < M:
+                    n=n+1
+                tmin = t1
+                timer-=tmin
+
+            elif t2<t0 and t2<t1 and t2<t3 and t2<t4: # remove a neurotransmitter
+                if z > 0:
+                    z=z-1
+                tmin = t2
+                timer-=tmin
+
+            elif t3<t0 and t3<t1 and t3<t2 and t3<t4: # remove a repair vesicle
+                if r>0:
+                    r=r-blist.popleft()
+                    krtimerslist.popleft()
+                tmin = t3
+                timer -= tmin
+                
+            else:
+                tmin=timer
+                timer = delta_t
+                if tcurr>=ratio*tmax:
+                    nlist.append(n)
+                    rlist.append(r)
+                    zlist.append(z)
+                    tlist.append(tcurr)
+            
+            tcurr += tmin
+
+        return tlist, nlist, rlist, zlist, APlist
+    
+def simulate_gamma(f, pr, M, n, r, z, k, kr, gammaz, cz, CV, ftype, tmax, delta_t):
+
+        nlist=[n]
+        zlist=[z]
+        rlist=[r]
+
+        tlist=[0]
+        APlist=[]
+
+        tcurr=0
+
+        timer = delta_t
+
+        ratio = 0.3
+        krtimerslist = []
+
+        while tcurr < tmax:
+            
+            t0=exponential(1/f) # action potential
+            t1=exponential(1/(k*(M-n-r) + 1e-6)) # site gets occupied
+            t2=exponential(1/(gammaz*z + 1e-6)) # remove neurotransmitter
+            if len(krtimerslist)>0:
+                t3 = np.min(krtimerslist)-tcurr
+            else:
+                t3=np.inf
+            t4 = timer
+            
+            if t0<t1 and t0<t2 and t0<t3 and t0<t4: # AP occurrs
+                b = binomial(n, pr)
+                n = n - b
+                r = r + b
+                z = z + cz*b
+                if tcurr>=ratio*tmax:
+                    APlist.append(tcurr+t0)
+                tmin = t0
+                timer-=tmin
+                if b>0:
+                    new_gammas = [gamma(1/CV**2, CV**2/kr)+tmin+tcurr for i in range(b)]
+                    krtimerslist += new_gammas
+                    
+            elif t1<t0 and t1<t2 and t1<t3 and t1<t4: # add a docked vesicle
+                if n < M:
+                    n=n+1
+                tmin = t1
+                timer-=tmin
+
+            elif t2<t0 and t2<t1 and t2<t3 and t2<t4: # remove a neurotransmitter
+                if z > 0:
+                    z=z-1
+                tmin = t2
+                timer-=tmin
+
+            elif t3<t0 and t3<t1 and t3<t2 and t3<t4: # remove a repair vesicle
+                if r>0:
+                    minkrtimerarg=np.argmin(krtimerslist)
+                    r=r-1
+                    krtimerslist.pop(minkrtimerarg)
+                tmin = t3
+                timer -= tmin
+
+            else:
+                tmin=timer
+                timer = delta_t
+                if tcurr>=ratio*tmax:
+                    nlist.append(n)
+                    rlist.append(r)
+                    zlist.append(z)
+                    tlist.append(tcurr)
+            
+            tcurr += tmin
+
+        return tlist, nlist, rlist, zlist, APlist
+###############################################################################
+#
+#                               Parameters
+#
+###############################################################################
+ftype='u' # feedback type: n-negative, p-positive, u-unregulated
+f=10
+pr=0.5 #
+M=100
+k=10 # 10 # feedback strength constant #
+
+gammaz=100 # d
+cz=100 # number of neurotransmitters per vesicle
+
+keq=5
+CV=0.1
+
+delta_t = 0.001
+tmax = 1 # <-------------- TMAX, set to 200 for the FF calculation
+
+n=M # occupied states
+r=0 #  repair states
+z=0 # neurotransmitters
+
+nfflist=[]
+
+niters=1
+for i in range(niters):
+    
+    print(i, niters)
+    
+    Rinf=simulate_kr_inf(f, pr, M, n, r, z, 1/(1/keq-1/np.inf), 
+                    gammaz, cz, 'u', tmax, delta_t)
+    ninf=Rinf[1]
+    nff=get_FF(ninf)
+    nfflist.append(nff)
+    
+nffinf=np.mean(nfflist)
+
+naverages=1
+krlist = np.concatenate([np.array([keq+0.01]),np.array([6]),np.linspace(10,200,5), np.linspace(300,1000, 3)])
+nFF = []
+nmeans = []
+for i, kr in enumerate(krlist):
+    nmeanlist=[]
+    nfflist=[]
+    for j in range(naverages):
+        print(i, len(krlist), j, naverages)
+        R=simulate(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz, ftype, tmax, delta_t)
+        R=simulate_deterministic(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz, ftype, tmax, delta_t)
+        R=simulate_gamma(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz, CV, ftype, tmax, delta_t)
+        nlist=R[1]
+        nmean=np.mean(nlist) # means
+        nff = get_FF(nlist) # FFs
+        nmeanlist.append(nmean) # append means
+        nfflist.append(nff) # append FFs
+    nFF.append(np.mean(nfflist))
+    nmeans.append(np.mean(nmeanlist))
+
+#%%
+
+font_path = 'C:/Windows/Fonts/BOOKOS.TTF'  # Adjust the path according to your system
+# Add the font to Matplotlib's font manager
+import matplotlib.font_manager as fm
+fm.fontManager.addfont(font_path)
+bookman_prop = fm.FontProperties(fname=font_path)
+plt.rcParams['font.family'] = bookman_prop.get_name()
+plt.rcParams['font.size'] = 15  # Set font size to 15
+
+krlist2=np.linspace(keq+0.05, 1000, 1000)
+
+plt.plot(krlist, np.array(nFF)/nffinf, marker='o', markersize=5,
+         color='b', linestyle='--', )
+
+plt.ylabel('Normalized fano factor')
+plt.xlabel('Repair rate')
+plt.legend()
+plt.xscale('log')
+plt.show()
