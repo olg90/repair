@@ -175,7 +175,7 @@ def simulate_kr_inf(f, pr, M, n, r, z, k, gammaz, cz, tmax, delta_t):
         ratio=0.3
 
         while tcurr < tmax:
-            
+
             # Get the three event times
             t0=exponential(1/f) # action potential
             t1=exponential(1/(k*(M-n) + 1e-6)) # empty to occupied
@@ -310,15 +310,15 @@ cz=100 # number of neurotransmitters per vesicle
 keq=5
 
 delta_t = 0.001
-tmax = 10 # <-------------- TMAX, set to 200 for the FF calculation
+tmax = 100 # <-------------- TMAX, set to 200 for the FF calculation
 
 n=M # occupied states
-r=0 #  repair states
+r=0 # repair states
 z=0 # neurotransmitters
 
 nfflist=[]
 
-niters=1
+niters=10
 for i in range(niters):
 
     print(i, niters)
@@ -333,7 +333,7 @@ nffinf=np.mean(nfflist)
 krlist = np.concatenate([np.array([keq+0.01]),np.array([6]),np.linspace(10,200,5), np.linspace(300,1000, 3)])
 
 def function(CV):
-    naverages=1
+    naverages=10
     krlist = np.concatenate([np.array([keq+0.01]),np.array([6]),np.linspace(10,200,5), np.linspace(300,1000, 3)])
     nFF = []
     nmeans = []
@@ -373,7 +373,7 @@ krlist2=np.linspace(keq+0.05, 1000, 1000)
 
 for i, nFF in enumerate(nffs):
     plt.plot(krlist, np.array(nFF)/nffinf, marker='o', markersize=5,
-             linestyle='--', label='{}'.format(CVlist[i]))
+             linestyle='--', label='CV = {}'.format(CVlist[i]))
 
 plt.ylabel('Normalized fano factor')
 plt.xlabel('Repair rate')
