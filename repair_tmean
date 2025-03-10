@@ -129,7 +129,7 @@ z=0 # neurotransmitters
 tauz=1
 tauv=1
 vth=0.2
-kz=0.001
+kz=0.002
 kr=10
 
 navgs=1
@@ -153,7 +153,7 @@ def function(kr, flist):
     return tlist, cvlist
 
 
-krlist=[1,10,100]
+krlist=[10,50,100]
 flist = np.linspace(0, 100, 100)
 
 tlist = []
@@ -165,10 +165,13 @@ for j, kr in enumerate(krlist):
     
 plt.subplot(1,2,1)
 for i in range(len(tlist)):
-    plt.plot(flist, 1/np.array(tlist[i]))
-plt.subplot(2,2,1)
-for i in range(len(tlist)):
-    plt.plot(flist, np.array(cvlist[i]))
+    plt.plot(flist, 1/np.array(tlist[i]), label = '{}'.format(krlist[i]))
+# =============================================================================
+# plt.subplot(2,2,1)
+# for i in range(len(tlist)):
+#     plt.plot(flist, np.array(cvlist[i]))
+# =============================================================================
     
 plt.ylabel('Firing rate')
 plt.xlabel('Input frequency')
+plt.legend()
