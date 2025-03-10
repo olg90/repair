@@ -1,0 +1,174 @@
+import numpy as np
+from matplotlib.pyplot import plot as pt
+import matplotlib.pyplot as plt
+from numpy.random import exponential, binomial, gamma
+from collections import deque
+
+# =============================================================================
+# # =============================================================================
+# #      no -> no + 1   with rate   K*(M-n-r), where K is: (-): k/(1+k1 z)
+# #                                             (+):kb+(k-kb)( k1 z / (1+ k1 z))
+# # 
+# # 
+# #      n -> n - b   with rate   f
+# #      r -> r + b
+# #      z -> z + cb
+# # 
+# # 
+# #      r -> r - 1   with rate   kr * r
+# #                   
+# # 
+# #      z -> z - 1     with rate   gammaz*z
+# # ============================================================================= 
+            
+def simulate2(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t, kz, tauz, tauv, vth, navgs):
+
+    tavgs=[]
+    cavgs=[]
+
+    for _ in range(navgs):
+
+        nlist=[]
+        rlist=[]
+        vlist=[]
+        vthlist=[]
+        zlist=[]
+        tlist=[]
+        prelist=[]
+        postlist=[]
+        
+        v=0
+        z=0
+        
+        tcurr=0
+        ratio = 0.3
+        timer = delta_t
+        while tcurr < tmax:
+            t0=exponential(1/f) # action potential
+            t1=exponential(1/(k*(M-n-r) + 1e-6)) # site gets occupied
+            t2=exponential(1/(gammaz*z + 1e-6)) # remove neurotransmitter
+            t3=exponential(1/(kr*r + 1e-6)) # repair a site
+            t4 = timer
+
+            if t0 < t1 and t0 < t2 and t0 < t3 and t0 < t4: # AP occurrs
+                b = binomial(n, pr)
+                n = n - b
+                r = r + b
+                z = z + cz*b
+                tmin = t0
+                timer-=tmin
+
+            elif t1<t0 and t1<t2 and t1<t3 and t1 < t4: # add a docked vesicle
+                if n < M:
+                    n=n+1
+                tmin = t1
+                timer-=tmin
+            elif t2<t0 and t2<t1 and t2<t3 and t2 < t4: # remove a neurotransmitter
+                if z > 0:
+                    z=z-1
+                tmin = t2
+                timer-=tmin
+            elif t3<t0 and t3<t1 and t3<t2 and t3<t4: # remove a repair vesicle
+                if r>0:
+                    r=r-1
+                tmin = t3
+                timer -= tmin
+
+            else:
+                timer = delta_t
+                tmin=timer
+                if tcurr >= ratio*tmax:
+                    nlist.append(n)
+                    rlist.append(r)
+                    zlist.append(z)
+                    tlist.append(tcurr)
+                    vlist.append(v)
+
+            tcurr += tmin
+            if v>=vth:
+                postlist.append(tcurr)
+                v=0
+
+            # Update the continuous dynamics
+
+            v = v + (-v/tauv + kz*z) * tmin
+
+        Tlist = np.diff(postlist)
+        Tmean = np.mean(Tlist)
+        CVT2=np.var(Tlist)/Tmean**2
+        FFn=np.var(nlist)/np.mean(nlist)
+        FFv=np.var(vlist)/np.mean(vlist)
+        
+        tavgs.append(Tmean)
+        cavgs.append(CVT2)
+    Tmean = np.mean(tavgs)
+    CVT2 = np.mean(cavgs)
+    return tlist, nlist, vlist, zlist, vthlist, prelist, postlist, Tmean, CVT2, FFn, FFv
+
+###############################################################################
+#
+#                               Parameters
+#
+###############################################################################
+
+f=10
+pr=0.5 #
+M=100
+k=10 # 10 # feedback strength constant #
+
+gammaz=100 # d
+cz=100 # number of neurotransmitters per vesicle
+
+delta_t = 0.001
+tmax = 5 # <-------------- TMAX, set to 200 for the FF calculation
+
+n=M # occupied states
+r=0 # repair states
+z=0 # neurotransmitters
+
+tauz=1
+tauv=1
+vth=0.2
+kz=0.001
+kr=10
+
+navgs=1
+
+# =============================================================================
+# res=simulate2(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t, kz, tauz, tauv, vth, navgs=1)
+# t=res[0]
+# v=res[2]
+# plt.plot(t,v)
+# #%%
+# =============================================================================
+
+def function(kr, flist):
+    tlist=[]
+    cvlist=[]
+    for i,f in enumerate(flist):
+        print(i/len(flist))
+        res = simulate2(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t, kz, tauz, tauv, vth, navgs)
+        tlist.append(res[7])
+        cvlist.append(res[8])
+    return tlist, cvlist
+
+
+krlist=[1,10,100]
+flist = np.linspace(0, 100, 100)
+
+tlist = []
+cvlist = []
+for j, kr in enumerate(krlist):
+    tlisti, cvlisti = function(kr, flist)
+    tlist.append(tlisti)
+    cvlist.append(cvlisti)
+    
+plt.subplot(1,2,1)
+for i in range(len(tlist)):
+    plt.plot(flist, 1/np.array(tlist[i]))
+plt.subplot(2,2,1)
+for i in range(len(tlist)):
+    plt.plot(flist, np.array(cvlist[i]))
+    
+plt.ylabel('Firing rate')
+plt.xlabel('Input frequency')
