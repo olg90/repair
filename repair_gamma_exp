@@ -309,7 +309,7 @@ cz=100 # number of neurotransmitters per vesicle
 
 keq=5
 
-delta_t = 0.001
+delta_t = 0.01
 tmax = 100 # <-------------- TMAX, set to 200 for the FF calculation
 
 n=M # occupied states
@@ -342,7 +342,9 @@ def function(CV):
         nfflist=[]
         for j in range(naverages):
             print(i, len(krlist), j, naverages)
-            R=simulate(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz, tmax, delta_t)
+# =============================================================================
+#             R=simulate(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz, tmax, delta_t)
+# =============================================================================
     # =============================================================================
     #         R=simulate_deterministic(f, pr, M, n, r, z, 1/(1/keq-1/kr), kr, gammaz, cz,  tmax, delta_t)
     # =============================================================================
@@ -357,9 +359,9 @@ def function(CV):
         
     return nFF
 
-CVlist = [1,2,3]
+CVlist = [1, 0.5, 0.25]
 nffs = [function(CV) for CV in CVlist]
-
+#%%
 font_path = 'C:/Windows/Fonts/BOOKOS.TTF'  # Adjust the path according to your system
 # Add the font to Matplotlib's font manager
 import matplotlib.font_manager as fm
@@ -368,15 +370,23 @@ bookman_prop = fm.FontProperties(fname=font_path)
 plt.rcParams['font.family'] = bookman_prop.get_name()
 plt.rcParams['font.size'] = 15  # Set font size to 15
 
-
 krlist2=np.linspace(keq+0.05, 1000, 1000)
 
-for i, nFF in enumerate(nffs):
-    plt.plot(krlist, np.array(nFF)/nffinf, marker='o', markersize=5,
-             linestyle='--', label='CV = {}'.format(CVlist[i]))
+# =============================================================================
+# for i, nFF in enumerate(nffs):
+#     plt.plot(krlist, np.array(nFF)/nffinf, marker='o', markersize=5,
+#              linestyle='--', label=r'$CV^2 = {}$'.format(2**(CVlist[i]-1)))
+# =============================================================================
+    
+plt.plot(krlist, np.array(nffs[0])/nffinf, marker='o', markersize=5,
+         linestyle='--', label='Exponential')
+plt.plot(krlist, np.array(nffs[1])/nffinf, marker='o', markersize=5,
+         linestyle='--', label='Gamma')
+plt.plot(krlist, np.array(nffs[2])/nffinf, marker='o', markersize=5,
+         linestyle='--', label=r'$CV^2 = {}$'.format(2**(CVlist[2]-1)))
 
 plt.ylabel('Normalized fano factor')
-plt.xlabel('Repair rate')
+plt.xlabel(r'Docking site repair rate (sec$^{-1}$)')
 plt.legend()
 plt.xscale('log')
 plt.show()
