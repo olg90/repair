@@ -20,7 +20,7 @@ from collections import deque
 # # 
 # #      z -> z - 1     with rate   gammaz*z
 # # ============================================================================= 
-            
+
 def simulate2(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t, kz, tauz, tauv, vth, navgs):
 
     tavgs=[]
@@ -132,7 +132,7 @@ vth=0.2
 kz=0.005
 kr=10
 
-navgs=1
+navgs=10
 
 # =============================================================================
 # res=simulate2(f, pr, M, n, r, z, k, kr, gammaz, cz, tmax, delta_t, kz, tauz, tauv, vth, navgs=1)
@@ -154,7 +154,7 @@ def function(kr, flist):
 
 
 krlist=[10,20,100]
-flist = np.linspace(0, 100, 100)
+flist = np.linspace(0, 100, 20)
 
 tlist = []
 cvlist = []
@@ -162,10 +162,17 @@ for j, kr in enumerate(krlist):
     tlisti, cvlisti = function(kr, flist)
     tlist.append(tlisti)
     cvlist.append(cvlisti)
-    
-plt.subplot(1,2,1)
+#%%    
+
+def smooth_data(data, window_size):
+    kernel = np.ones(window_size) / window_size
+    return np.convolve(data, kernel, mode='same')
+
+w=1
 for i in range(len(tlist)):
-    plt.plot(flist, 1/np.array(tlist[i]), label = '{}'.format(krlist[i]))
+    plt.plot(flist,smooth_data(1/np.array(tlist[i]), w), 
+             label = r'$\gamma_r=${} Hz'.format(krlist[i]), marker='o', markersize=7,
+                      linestyle='--', linewidth=2)
 # =============================================================================
 # plt.subplot(2,2,1)
 # for i in range(len(tlist)):
