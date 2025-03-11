@@ -310,7 +310,7 @@ cz=100 # number of neurotransmitters per vesicle
 keq=5
 
 delta_t = 0.01
-tmax = 10 # <-------------- TMAX, set to 200 for the FF calculation
+tmax = 1 # <-------------- TMAX, set to 200 for the FF calculation
 
 n=M # occupied states
 r=0 # repair states
@@ -318,7 +318,7 @@ z=0 # neurotransmitters
 
 nfflist=[]
 
-niters=10
+niters=1
 for i in range(niters):
 
     print(i, niters)
